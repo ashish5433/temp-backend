@@ -7,6 +7,8 @@ from algo import optimize_traffic
 app = Flask(__name__)
 CORS(app)
 app.config['DEBUG'] = False
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # Set upload size limit
+
 @app.route('/upload', methods=['POST'])
 def upload_files():
     files = request.files.getlist('videos')
@@ -21,14 +23,20 @@ def upload_files():
 
     num_cars_list = []
     for video_file in video_paths:
-        num_cars = detect_cars(video_file)
-        num_cars_list.append(num_cars)
+        try:
+            num_cars = detect_cars(video_file)
+            num_cars_list.append(num_cars)
+        except Exception as e:
+            return jsonify({'error': f"Error detecting cars: {str(e)}"}), 500
 
-    result = optimize_traffic(num_cars_list)
+    try:
+        result = optimize_traffic(num_cars_list)
+    except Exception as e:
+        return jsonify({'error': f"Error optimizing traffic: {str(e)}"}), 500
 
     return jsonify(result)
 
 if __name__ == '__main__':
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)
